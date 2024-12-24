@@ -21,6 +21,18 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
+
+    const foodCollection = client.db('foodPortal').collection('foods');
+
+    app.post('/foods', async (req, res) => {
+      const newFood = req.body;
+      const result = await foodCollection.insertOne(newFood);
+      res.send(result)
+    })
+
+
+
+
     await client.connect();
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -32,10 +44,10 @@ run().catch(console.dir);
 
 
 
-app.get('/',(req,res)=>{
-    res.send('MealMates Server is Running')
+app.get('/', (req, res) => {
+  res.send('MealMates Server is Running')
 })
 
-app.listen(port,()=>{
-    console.log(`MealMates Server Running on Port ${port}`)
+app.listen(port, () => {
+  console.log(`MealMates Server Running on Port ${port}`)
 })
