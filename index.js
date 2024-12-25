@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 const app = express();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 app.use(cors());
@@ -26,14 +26,23 @@ async function run() {
     const subscriberCollection = client.db('foodPortal').collection('subscribers');
 
     app.get('/foods', async (req, res) => {
+      const limit = parseInt(req.query.limit) || 0;
+
       const email = req.query.email;
       let query = {}
       if (email) {
         query = { donatorEmail: email }
       }
-      const cursor = foodCollection.find(query);
+      const cursor = foodCollection.find(query).limit(limit);
       const result = await cursor.toArray();
       res.send(result)
+    })
+
+    app.get('/foods/:id',async(req,res)=>{
+      const id =req.params.id;
+      const query ={_id: new ObjectId(id)}
+      const food= await foodCollection.findOne(query);
+      res.send(food)
     })
 
 
