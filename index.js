@@ -23,12 +23,42 @@ async function run() {
   try {
 
     const foodCollection = client.db('foodPortal').collection('foods');
+    const subscriberCollection = client.db('foodPortal').collection('subscribers');
+
+    app.get('/foods', async (req, res) => {
+      const email = req.query.email;
+      let query = {}
+      if (email) {
+        query = { donatorEmail: email }
+      }
+      const cursor = foodCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result)
+    })
+
 
     app.post('/foods', async (req, res) => {
       const newFood = req.body;
       const result = await foodCollection.insertOne(newFood);
       res.send(result)
     })
+
+
+    app.post('/subscribers', async (req, res) => {
+      const email = req.body.email;
+
+      try {
+        const existingSubscriber = await subscriberCollection.findOne({ email });
+
+        if (existingSubscriber) {
+          return res.status(400).json({ message: 'This email is already subscribed.' });
+        }
+        const result = await subscriberCollection.insertOne({ email });
+        res.status(200).json({ message: 'Subscriber added successfully!' });
+      } catch (error) {
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+      }
+    });
 
 
 
