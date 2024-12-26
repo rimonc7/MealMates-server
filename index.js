@@ -24,6 +24,7 @@ async function run() {
 
     const foodCollection = client.db('foodPortal').collection('foods');
     const subscriberCollection = client.db('foodPortal').collection('subscribers');
+    const foodReqCollection = client.db('foodPortal').collection('foodRequest');
 
     app.get('/foods', async (req, res) => {
       const limit = parseInt(req.query.limit) || 0;
@@ -33,18 +34,37 @@ async function run() {
       if (email) {
         query = { donatorEmail: email }
       }
-      const cursor = foodCollection.find(query).limit(limit);
+      const cursor = foodCollection.find(query).sort({ expiredDateTime: 1 }).limit(limit);
       const result = await cursor.toArray();
       res.send(result)
     })
 
-    app.get('/foods/:id',async(req,res)=>{
-      const id =req.params.id;
-      const query ={_id: new ObjectId(id)}
-      const food= await foodCollection.findOne(query);
+    app.get('/foods/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const food = await foodCollection.findOne(query);
       res.send(food)
     })
 
+    app.get('/foodReq', async (req, res) => {
+      const email = req.query.email;
+      let query = {};
+
+      if (email) {
+        query = { email: email };
+      }
+      const cursor = foodReqCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+
+    app.delete('/foods/:id', async (req, res) => {
+      const id = req.params.id
+      const query = { _id: new ObjectId(id) }
+      const result = await foodCollection.deleteOne(query);
+      res.send(result)
+    })
 
     app.post('/foods', async (req, res) => {
       const newFood = req.body;
@@ -52,6 +72,11 @@ async function run() {
       res.send(result)
     })
 
+    app.post('/foodReq', async (req, res) => {
+      const foodReq = req.body;
+      const result = await foodReqCollection.insertOne(foodReq);
+      res.send(result)
+    })
 
     app.post('/subscribers', async (req, res) => {
       const email = req.body.email;
