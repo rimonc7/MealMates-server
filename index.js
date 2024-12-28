@@ -95,6 +95,18 @@ async function run() {
     });
 
 
+    app.patch('/foods/:id', async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          additionalNotes: data.additionalNotes
+        }
+      }
+      const result = await foodCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+    })
 
 
     await client.connect();
