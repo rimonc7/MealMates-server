@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
@@ -8,7 +9,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 app.use(cors());
 app.use(express.json());
 
-const uri = 'mongodb+srv://job_hunter:WFylTUHg2zhWQV50@cluster0.by2cb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+const uri = `mongodb+srv://${process.env.DB_User}:${process.env.DB_Password}@cluster0.by2cb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 
 const client = new MongoClient(uri, {
@@ -105,6 +106,41 @@ async function run() {
         }
       }
       const result = await foodCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+    })
+
+    app.patch('/foodRequest/:id', async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          status: data.status
+        }
+      }
+      const result = await foodReqCollection.updateOne(filter, updatedDoc);
+      res.send(result)
+    })
+
+    app.put('/updateFood/:id', async (req, res) => {
+      const { id } = req.params
+      const food = req.body;
+      const filter = { _id: new ObjectId(id) }
+      const updateFood = {
+        $set: {
+          foodName: food.foodName,
+          foodImage: food.foodImage,
+          foodQuantity: food.foodQuantity,
+          pickupLocation: food.pickupLocation,
+          expiredDateTime: food.expiredDateTime,
+          additionalNotes: food.additionalNotes,
+          donatorImage: food.donatorImage,
+          donatorName: food.donatorName,
+          donatorEmail: food.donatorEmail,
+          foodStatus: food.foodStatus
+        }
+      }
+      const result = await foodCollection.updateOne(filter, updateFood)
       res.send(result)
     })
 
