@@ -3,18 +3,30 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
-const port = process.env.PORT || 5000;
-const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
+const port = process.env.PORT || 5000;
+const app = express();
 
 app.use(cors({
-  origin: ['http://localhost:5173'],
-  credentials: true
+  origin: ['http://localhost:5173', 'https://mealmeats.web.app', 'https://mealmeats.firebaseapp.com'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
 }));
+
+app.options('*', cors());
+
 app.use(express.json());
 app.use(cookieParser());
 
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || '*');
+  res.header("Access-Control-Allow-Credentials", 'true');
+  res.header("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT,PATCH,DELETE");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-csrf-token");
+  next();
+});
 
 const verifyToken = (req, res, next) => {
   const token = req?.cookies?.token;
@@ -25,15 +37,12 @@ const verifyToken = (req, res, next) => {
     if (err) {
       return res.status(401).send({ message: 'Unauthorized access' });
     }
-
     req.user = decoded;
     next();
   });
 };
 
-
 const uri = `mongodb+srv://${process.env.DB_User}:${process.env.DB_Password}@cluster0.by2cb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -45,7 +54,6 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-
     const foodCollection = client.db('foodPortal').collection('foods');
     const subscriberCollection = client.db('foodPortal').collection('subscribers');
     const foodReqCollection = client.db('foodPortal').collection('foodRequest');
@@ -62,40 +70,36 @@ async function run() {
         .send({ success: true });
     });
 
-
     app.post('/logout', (req, res) => {
       res.clearCookie('token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
-      })
-        .send({ success: true })
-    })
+      }).send({ success: true });
+    });
 
     app.get('/foods', async (req, res) => {
       const limit = parseInt(req.query.limit) || 0;
-
       const email = req.query.email;
-      let query = {}
+      let query = {};
       if (email) {
-        query = { donatorEmail: email }
+        query = { donatorEmail: email };
       }
       const cursor = foodCollection.find(query).sort({ expiredDateTime: 1 }).limit(limit);
       const result = await cursor.toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
 
-    app.get('/foods/:id',verifyToken, async (req, res) => {
+    app.get('/foods/:id', verifyToken, async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) }
+      const query = { _id: new ObjectId(id) };
       const food = await foodCollection.findOne(query);
-      res.send(food)
-    })
+      res.send(food);
+    });
 
     app.get('/foodReq', verifyToken, async (req, res) => {
       const email = req.query.email;
       let query = {};
-
       if (email) {
         query = { email: email };
       }
@@ -104,32 +108,29 @@ async function run() {
       res.send(result);
     });
 
-
     app.delete('/foods/:id', async (req, res) => {
-      const id = req.params.id
-      const query = { _id: new ObjectId(id) }
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
       const result = await foodCollection.deleteOne(query);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     app.post('/foods', async (req, res) => {
       const newFood = req.body;
       const result = await foodCollection.insertOne(newFood);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     app.post('/foodReq', async (req, res) => {
       const foodReq = req.body;
       const result = await foodReqCollection.insertOne(foodReq);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     app.post('/subscribers', async (req, res) => {
       const email = req.body.email;
-
       try {
         const existingSubscriber = await subscriberCollection.findOne({ email });
-
         if (existingSubscriber) {
           return res.status(400).json({ message: 'This email is already subscribed.' });
         }
@@ -140,71 +141,45 @@ async function run() {
       }
     });
 
-
     app.patch('/foods/:id', async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          additionalNotes: data.additionalNotes
-        }
-      }
+      const updatedDoc = { $set: { additionalNotes: data.additionalNotes } };
       const result = await foodCollection.updateOne(filter, updatedDoc);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     app.patch('/foodRequest/:id', async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          status: data.status
-        }
-      }
+      const updatedDoc = { $set: { status: data.status } };
       const result = await foodReqCollection.updateOne(filter, updatedDoc);
-      res.send(result)
-    })
+      res.send(result);
+    });
 
     app.put('/updateFood/:id', async (req, res) => {
-      const { id } = req.params
+      const { id } = req.params;
       const food = req.body;
-      const filter = { _id: new ObjectId(id) }
-      const updateFood = {
-        $set: {
-          foodName: food.foodName,
-          foodImage: food.foodImage,
-          foodQuantity: food.foodQuantity,
-          pickupLocation: food.pickupLocation,
-          expiredDateTime: food.expiredDateTime,
-          additionalNotes: food.additionalNotes,
-          donatorImage: food.donatorImage,
-          donatorName: food.donatorName,
-          donatorEmail: food.donatorEmail,
-          foodStatus: food.foodStatus
-        }
-      }
-      const result = await foodCollection.updateOne(filter, updateFood)
-      res.send(result)
-    })
+      const filter = { _id: new ObjectId(id) };
+      const updateFood = { $set: food };
+      const result = await foodCollection.updateOne(filter, updateFood);
+      res.send(result);
+    });
 
-
-    await client.connect();
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    console.log("Pinged your deployment. Successfully connected to MongoDB!");
   } finally {
-    // await client.close();
+    // Leave client connection open for server to use
   }
 }
+
 run().catch(console.dir);
 
-
-
 app.get('/', (req, res) => {
-  res.send('MealMates Server is Running')
-})
+  res.send('MealMates Server is Running');
+});
 
 app.listen(port, () => {
-  console.log(`MealMates Server Running on Port ${port}`)
-})
+  console.log(`MealMates Server Running on Port ${port}`);
+});
